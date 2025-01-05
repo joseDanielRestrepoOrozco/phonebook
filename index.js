@@ -1,6 +1,9 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
+const Person = require('./models/person')
+const { default: mongoose } = require('mongoose')
 
 const app = express()
 
@@ -8,9 +11,15 @@ app.use(express.json())
 app.use(cors())
 app.use(express.static('dist'))
 
-morgan.token('body', (req, res) => {return JSON.stringify(req.body)})
+morgan.token('body', (req, res) => {
+  return JSON.stringify(req.body)
+})
 
-app.use(morgan(':method :url :status :response-time[digits] - :total-time[digits] msf :body'))
+app.use(
+  morgan(
+    ':method :url :status :response-time[digits] - :total-time[digits] msf :body'
+  )
+)
 
 let persons = [
   {
@@ -40,7 +49,9 @@ app.get('/', (request, response) => {
 })
 
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Person.find({}).then(persons => {
+    response.json(persons)
+  })
 })
 
 app.get('/info', (request, response) => {
@@ -82,21 +93,15 @@ app.post('/api/persons', (request, response) => {
     return response.status(404).json({
       error: 'name or number missing',
     })
-  } else if (persons.find(person => person.name === body.name)) {
-    return response.status(404).json({
-      error: 'name must be unique',
-    })
   }
-
-  const person = {
-    id: generateId(),
+  const person = new Person({
     name: body.name,
     number: body.number,
-  }
+  })
 
-  persons = persons.concat(person)
-
-  response.json(person)
+  person.save().then(result => {
+    response.json(result)
+  })
 })
 
 const PORT = process.env.PORT || 3001
